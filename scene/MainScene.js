@@ -18,7 +18,7 @@ var game;
         game.load.image('treeB','resource/treeB.png');
         game.load.image('treeC','resource/treeC.png');
         game.load.image('tumian','resource/tumian.png');
-        game.load.spritesheet('hero','resource/person1.png',88,88);
+        game.load.spritesheet('hero','resource/person2.png',88,88);
         //UI
         game.load.image('bag','resource/bag.png');
         game.load.image('attack','resource/attack.png');
@@ -27,6 +27,12 @@ var game;
         game.load.image('hungry','resource/hungry.png');
         game.load.image('repeat','resource/repeat.png');
         game.load.image('thirsty','resource/thirsty.png');
+        game.load.image('health_bar','resource/health_bar.png');
+        game.load.image('hungry_bar','resource/hungry_bar.png');
+        game.load.image('repeat_bar','resource/repeat_bar.png');
+        game.load.image('thirsty_bar','resource/thirsty_bar.png');
+        //高光
+        game.load.image('highlight','resource/highlight.png');
 	}
 
     var map;
@@ -37,6 +43,7 @@ var game;
     var bounce;
     var speed = 100;
     var mapData;
+    var highlight;
 	function create(){
         map = game.add.tilemap('map');
         map.addTilesetImage('treeA');
@@ -56,28 +63,33 @@ var game;
         player.animations.add('up',[12,13,14,15],12,true);
         player.anchor.set(0.5,0.9);
         player.isMove = false;
+        player.face = 'down';
 
         layer2 = map.createLayer('layer 2');
         layer2.resizeWorld();
+
+        highlight = game.add.image(200,200,'highlight');
+        highlight.anchor.set(0.5);
+        highlight.visible = false;
         mapData = layer.layer.data;
         cursor = game.input.keyboard.createCursorKeys();
-        game.camera.follow(player);
+        game.camera.follow(player,3);
         createUI();
+
+        //添加事件
+        game.input.onUp.add(playerMove,this);
 	}
 
 	function update(){
-        if(game.input.activePointer.isDown && !player.isMove){
+        if(game.input.activePointer.isDown){
             var playerPositionX = ~~(player.position.x/80);
             var playerPositionY = ~~(player.position.y/80);
             var position = getMapPoint(game.input.activePointer.worldX,game.input.activePointer.worldY);
             var endX = ~~(position.x/80);
             var endY = ~~(position.y/80);
-            if ((playerPositionX != endX || playerPositionY != endY)&&mapData[endY][endX].index!=5){
-                var path = findPath({x:playerPositionX,y:playerPositionY},{x:endX,y:endY});
-                var node = path.pop();
-                player.isMove = true;
-                var tween = game.add.tween(player).to({x:node.x*80+40,y:node.y*80+40},speed).start();
-                tween.onComplete.add(XEnd.bind(this,position,path),this);
+            if ((playerPositionX != endX || playerPositionY != endY)&&mapData[endY][endX].index!=5&&1<endX&&endX<126&&1<endY&&endY<70){
+                highlight.position.set(80*endX+40,80*endY+40);
+                highlight.visible = true;
             }
             // var facingX = (position.x - playerPosition.x);
             // facingX && (facingX /= Math.abs(facingX));
@@ -97,9 +109,24 @@ var game;
     function XEnd(position,path){
         if(path.length <= 0){
             player.isMove = false;
+            player.animations.stop();
+            console.log(player.face);
+            switch(player.face){
+                case 'left':player.frame = 4;
+                    break;
+                case 'right':player.frame = 8;
+                    break;
+                case 'down':player.frame = 0;
+                    break;
+                case 'up':player.frame = 12;
+                    break;
+            }
             return;
         }
+        var playerPositionX = ~~(player.position.x/80);
+        var playerPositionY = ~~(player.position.y/80);
         var node = path.pop();
+        playerAnimation(node.x-playerPositionX,node.y-playerPositionY);
         var tween = game.add.tween(player).to({x:node.x*80+40,y:node.y*80+40},speed).start();
         tween.onComplete.add(XEnd.bind(this,position,path),this);
 
@@ -119,18 +146,62 @@ var game;
         attackButton.position.set(attackButton.width/2+10,480 - attackButton.height/2);
         attackButton.anchor.set(0.5);
         attackButton.fixedToCamera = true;
+        attackButton.inputEnabled = true;
+        attackButton.events.onInputDown.add(function(){
+            attackButton.scale.set(0.8);
+        },this);
+        attackButton.events.onInputUp.add(function(){
+            attackButton.scale.set(1);
+        },this);
+        attackButton.events.onInputOut.add(function(){
+            attackButton.scale.set(1);
+        },this);
         var avatar = game.add.sprite(0,0,'avatar');
         avatar.fixedToCamera = true;
         //Bar
-        var barX = avatar.width;
-        var healthBar = game.add.sprite(barX,0,'health');
-        healthBar.fixedToCamera = true;
-        var hungryBar = game.add.sprite(barX,30,'hungry');
-        hungryBar.fixedToCamera = true;
-        var thirstyBar = game.add.sprite(barX,60,'thirsty');
-        thirstyBar.fixedToCamera = true;
-        var repeatBar = game.add.sprite(barX,90,'repeat');
-        repeatBar.fixedToCamera = true;
+        var barX = avatar.width+25;
+        player.healthBar = game.add.sprite(barX,0,'health_bar');
+        player.healthBar.fixedToCamera = true;
+        player.hungryBar = game.add.sprite(barX,30,'hungry_bar');
+        player.hungryBar.fixedToCamera = true;
+        player.thirstyBar = game.add.sprite(barX,60,'thirsty_bar');
+        player.thirstyBar.fixedToCamera = true;
+        player.repeatBar = game.add.sprite(barX,90,'repeat_bar');
+        player.repeatBar.fixedToCamera = true;
+        //mask
+        var mask = game.add.graphics(barX,0);
+        mask.fixedToCamera = true;
+        mask.beginFill(0xeeeeee);
+        mask.drawRect(0,0,149,18);
+        player.healthBar.mask = mask;
+
+        mask = game.add.graphics(barX,30);
+        mask.fixedToCamera = true;
+        mask.beginFill(0xeeeeee);
+        mask.drawRect(0,0,149,18);
+        player.hungryBar.mask = mask;
+
+        mask = game.add.graphics(barX,60);
+        mask.fixedToCamera = true;
+        mask.beginFill(0xeeeeee);
+        mask.drawRect(0,0,149,18);
+        player.thirstyBar.mask = mask;
+
+        mask = game.add.graphics(barX,90);
+        mask.fixedToCamera = true;
+        mask.beginFill(0xeeeeee);
+        mask.drawRect(0,0,149,18);
+        player.repeatBar.mask = mask;
+
+        barX-=25;
+        var healthBarBorder = game.add.sprite(barX,0,'health');
+        healthBarBorder.fixedToCamera = true;
+        var hungryBarBorder = game.add.sprite(barX,30,'hungry');
+        hungryBarBorder.fixedToCamera = true;
+        var thirstyBarBorder = game.add.sprite(barX,60,'thirsty');
+        thirstyBarBorder.fixedToCamera = true;
+        var repeatBarBorder = game.add.sprite(barX,90,'repeat');
+        repeatBarBorder.fixedToCamera = true;
     }
 
     function findPath(start,end){
@@ -262,6 +333,56 @@ var game;
 
     function compare(a,b){
         return a.f - b.f;
+    }
+
+    function playerMove(pointer){
+        highlight.visible = false;
+        if (player.isMove) {return;}
+        var playerPositionX = ~~(player.position.x/80);
+        var playerPositionY = ~~(player.position.y/80);
+        var position = getMapPoint(pointer.worldX,pointer.worldY);
+        var endX = ~~(position.x/80);
+        var endY = ~~(position.y/80);
+        if ((playerPositionX != endX || playerPositionY != endY)&&mapData[endY][endX].index!=5&&1<endX&&endX<126&&1<endY&&endY<70){
+            var path = findPath({x:playerPositionX,y:playerPositionY},{x:endX,y:endY});
+            var node = path.pop();
+            player.isMove = true;
+            player.face = '';
+            playerAnimation(node.x-playerPositionX,node.y-playerPositionY);
+            var tween = game.add.tween(player).to({x:node.x*80+40,y:node.y*80+40},speed).start();
+            tween.onComplete.add(XEnd.bind(this,position,path),this);
+        }
+    }
+
+    function playerAnimation(faceX,faceY){
+        console.log(faceX,faceY);
+        if (faceX != 0) {
+            if(faceX < 0){
+                if(player.face == 'left')return;
+                player.face = 'left';
+                player.animations.play('left');
+            }
+            else{
+                if(player.face == 'right')return;
+                player.face = 'right';
+                player.animations.play('right');
+            }
+        }else{
+            if(faceY < 0){
+                if(player.face == 'up')return;
+                player.face = 'up';
+                player.animations.play('up');
+            }
+            else{
+                if(player.face == 'down')return;
+                player.face = 'down';
+                player.animations.play('down');
+            }
+        }
+    }
+
+    function StageTouchDown(pointer){
+        if (player.isMove) {return;}
     }
 
 })()
