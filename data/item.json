@@ -1,0 +1,10 @@
+{
+	"meat":{
+		"type":"food",
+		"value":20
+	},
+	"water":{
+		"type":"water",
+		"value":20
+	}
+}

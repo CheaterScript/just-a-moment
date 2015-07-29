@@ -5,6 +5,17 @@
 	</head>
 	<script type="text/javascript" src="lib/phaser.js"></script>
 	<script type="text/javascript" src="scene/MainScene.js"></script>
+	<link rel="stylesheet" type="text/css" href="css/main.css">
 	<body>
 	</body>
+	<script type="text/javascript">
+		var game;
+		window.onload = function(){
+			var viewWidth = window.innerWidth;
+			var viewHeight = window.innerHeight;
+			game = new Phaser.Game(viewWidth,viewHeight,Phaser.ATUO,'myCanvas');
+			game.state.add('MainScene',Scene.MainScene);
+			game.state.start('MainScene');
+		}
+	</script>
 </html>
